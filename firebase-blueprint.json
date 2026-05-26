@@ -1,0 +1,67 @@
+{
+  "entities": {
+    "ceo_profile": {
+      "title": "CEO Profile",
+      "description": "Information about the CEO including name, title, contact details, and portrait image.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Full name of the CEO"
+        },
+        "title": {
+          "type": "string",
+          "description": "Designation/Title of the CEO"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Email address of the CEO"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Contact phone number of the CEO"
+        },
+        "portraitUrl": {
+          "type": "string",
+          "description": "URL or base64 representation of the CEO's portrait photo"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "The timestamp of when the profile was last updated"
+        }
+      },
+      "required": ["name", "title", "email", "phone", "portraitUrl", "updatedAt"]
+    },
+    "branding": {
+      "title": "Branding Settings",
+      "description": "Company branding elements like custom logos and slogans.",
+      "type": "object",
+      "properties": {
+        "logoUrl": {
+          "type": "string",
+          "description": "URL or base64 data of the manually uploaded custom website logo"
+        },
+        "slogan": {
+          "type": "string",
+          "description": "Custom slogan for the website"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "The timestamp of when the branding settings were last updated"
+        }
+      },
+      "required": ["logoUrl", "slogan", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/ceo_profile/{profileId}": {
+      "schema": "ceo_profile",
+      "description": "Collection containing the CEO profile document."
+    },
+    "/branding/{brandingId}": {
+      "schema": "branding",
+      "description": "Collection containing global website branding configuration documents like manually uploaded logos."
+    }
+  }
+}

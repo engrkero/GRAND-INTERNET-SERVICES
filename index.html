@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grand Internet Services (GIS) | Customer services, We make it even better.</title>
+  </head>
+  <body>
+    <!-- Full-screen WiFi Buffering Preloader Overlay -->
+    <div id="preloader" style="position: fixed; inset: 0; background: #ffffff; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.35s ease-in-out, visibility 0.35s ease-in-out;">
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 24px;">
+        <!-- High-fidelity Custom SVG WiFi Signal Buffering Indicator -->
+        <svg width="84" height="84" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="transform: translateY(2px);">
+          <!-- Central Dot in Black -->
+          <circle cx="12" cy="18" r="1.6" fill="#000000" style="animation: wifi-pulse-ani-rapid 0.8s infinite ease-in-out; animation-delay: 0s; transform-origin: 12px 18px;" />
+          <!-- Inner curved segment in Deep Red -->
+          <path d="M9 15C10.6569 13.3431 13.3431 13.3431 15 15" stroke="#990000" stroke-width="2.3" stroke-linecap="round" style="animation: wifi-pulse-ani-rapid 0.8s infinite ease-in-out; animation-delay: 0.12s; transform-origin: 12px 18px;" />
+          <!-- Mid curved segment in Black -->
+          <path d="M6 12C9.31371 8.68629 14.6863 8.68629 18 12" stroke="#000000" stroke-width="2.3" stroke-linecap="round" style="animation: wifi-pulse-ani-rapid 0.8s infinite ease-in-out; animation-delay: 0.24s; transform-origin: 12px 18px;" />
+          <!-- Outer curved segment in Deep Red -->
+          <path d="M3 9C7.97056 4.02944 16.0294 4.02944 21 9" stroke="#990000" stroke-width="2.3" stroke-linecap="round" style="animation: wifi-pulse-ani-rapid 0.8s infinite ease-in-out; animation-delay: 0.36s; transform-origin: 12px 18px;" />
+        </svg>
+        <div style="text-align: center; display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif; font-size: 11px; font-weight: 800; color: #000000; letter-spacing: 0.35em; text-transform: uppercase;">
+            GRAND INTERNET
+          </span>
+          <span style="font-family: system-ui, -apple-system, sans-serif; font-size: 8px; font-weight: 700; color: #990000; letter-spacing: 0.22em; text-transform: uppercase;">
+            LIGHTNING PORTAL CONNECTING...
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <style>
+      @keyframes wifi-pulse-ani-rapid {
+        0%, 100% {
+          opacity: 0.12;
+          transform: scale(0.96);
+        }
+        25% {
+          opacity: 1;
+          transform: scale(1.04);
+        }
+        50% {
+          opacity: 0.12;
+          transform: scale(0.96);
+        }
+      }
+    </style>
+
+    <script>
+      // Smooth slow-buffered fade-out after resources have completed loading
+      window.addEventListener('load', function() {
+        const loader = document.getElementById('preloader');
+        if (loader) {
+          // Stay on-screen for at least 1800ms to allow smooth connection animation to fully render
+          setTimeout(function() {
+            loader.style.opacity = '0';
+            loader.style.visibility = 'hidden';
+            setTimeout(function() {
+              loader.style.display = 'none';
+            }, 350);
+          }, 1800);
+        }
+      });
+    </script>
+
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

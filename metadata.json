@@ -1,0 +1,6 @@
+{
+  "name": "Grand Internet Services",
+  "description": "Single-page portfolio website for Grand Internet Services (GIS), featuring their services, company motto, and an interactive 3D flip CEO profile card.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

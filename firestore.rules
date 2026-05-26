@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Default Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isEmailVerified() && request.auth.token.email == "kerenonen4@gmail.com";
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidCEOProfile(data) {
+      return data.keys().hasAll(['name', 'title', 'email', 'phone', 'portraitUrl', 'updatedAt'])
+        && data.keys().size() == 6
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 100
+        && data.email is string && data.email.size() > 0 && data.email.size() <= 100
+        && data.phone is string && data.phone.size() > 0 && data.phone.size() <= 50
+        && data.portraitUrl is string && data.portraitUrl.size() > 0 && data.portraitUrl.size() <= 2000000 // Support base64 or URL
+        && data.updatedAt is string && data.updatedAt.size() > 0 && data.updatedAt.size() <= 100;
+    }
+
+    function isValidBranding(data) {
+      return data.keys().hasAll(['logoUrl', 'slogan', 'updatedAt'])
+        && data.keys().size() == 3
+        && data.logoUrl is string && data.logoUrl.size() <= 2000000 // Support base64 or URL
+        && data.slogan is string && data.slogan.size() <= 200
+        && data.updatedAt is string && data.updatedAt.size() <= 100;
+    }
+
+    match /ceo_profile/{profileId} {
+      allow get: if true; // Public access for displaying CEO profile
+      allow list: if true; // Public access for querying CEO profile
+      allow create: if isAdmin() && isValidId(profileId) && isValidCEOProfile(request.resource.data);
+      allow update: if isAdmin() && isValidId(profileId) && isValidCEOProfile(request.resource.data);
+      allow delete: if isAdmin() && isValidId(profileId);
+    }
+
+    match /branding/{brandingId} {
+      allow get: if true; // Public access for website branding
+      allow list: if true; // Public access for website branding queries
+      allow create: if isAdmin() && isValidId(brandingId) && isValidBranding(request.resource.data);
+      allow update: if isAdmin() && isValidId(brandingId) && isValidBranding(request.resource.data);
+      allow delete: if isAdmin() && isValidId(brandingId);
+    }
+  }
+}
