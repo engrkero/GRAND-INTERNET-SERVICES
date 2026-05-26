@@ -1,8 +1,34 @@
+import { useState, useEffect } from "react";
+import { auth } from "../lib/firebase";
 import Logo from "./Logo";
 
 export default function Header() {
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = () => {
+      const stored = sessionStorage.getItem("admin_session");
+      setIsAdmin(!!stored || !!auth.currentUser);
+    };
+
+    checkAdmin();
+    const handleAuthChange = () => {
+      checkAdmin();
+    };
+
+    window.addEventListener("admin_auth_state_changed", handleAuthChange);
+    const unsubscribeAuth = auth.onAuthStateChanged(() => {
+      checkAdmin();
+    });
+
+    return () => {
+      window.removeEventListener("admin_auth_state_changed", handleAuthChange);
+      unsubscribeAuth();
+    };
+  }, []);
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 w-full glass-nav transition-opacity duration-300" id="app-header">
+    <header className={`fixed left-0 right-0 z-50 w-full glass-nav transition-all duration-300 ${isAdmin ? "top-[82px] sm:top-12" : "top-0"}`} id="app-header">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
         {/* Logo Container */}
         <Logo />

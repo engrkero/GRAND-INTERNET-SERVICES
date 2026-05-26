@@ -1,3 +1,5 @@
+import { useState, useEffect } from "react";
+import { auth } from "./lib/firebase";
 import Header from "./components/Header";
 import Hero from "./components/Hero";
 import ServicesSection from "./components/ServicesSection";
@@ -6,6 +8,30 @@ import Footer from "./components/Footer";
 import FloatingControls from "./components/FloatingControls";
 
 export default function App() {
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = () => {
+      const stored = sessionStorage.getItem("admin_session");
+      setIsAdmin(!!stored || !!auth.currentUser);
+    };
+
+    checkAdmin();
+    const handleAuthChange = () => {
+      checkAdmin();
+    };
+
+    window.addEventListener("admin_auth_state_changed", handleAuthChange);
+    const unsubscribeAuth = auth.onAuthStateChanged(() => {
+      checkAdmin();
+    });
+
+    return () => {
+      window.removeEventListener("admin_auth_state_changed", handleAuthChange);
+      unsubscribeAuth();
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans antialiased selection:bg-[#990000] selection:text-white relative overflow-hidden" id="main-app">
       {/* Animated Mesh Gradient Background (Clean Light Mode glass environment) */}
@@ -18,7 +44,7 @@ export default function App() {
 
       {/* Structural Headers and Layout Components */}
       <Header />
-      <main className="pt-16 relative z-10">
+      <main className={`relative z-10 transition-all duration-300 ${isAdmin ? "pt-[146px] sm:pt-28" : "pt-16"}`}>
         <Hero />
         <ServicesSection />
         <CEOSection />

@@ -9,7 +9,7 @@ interface LogoProps {
 }
 
 export default function Logo({ showSlogan = true, className = "", iconOnly = false }: LogoProps) {
-  const [branding, setBranding] = useState<{ logoUrl: string; slogan: string } | null>(null);
+  const [branding, setBranding] = useState<{ logoUrl: string; faviconUrl?: string; slogan: string } | null>(null);
 
   useEffect(() => {
     // Load any locally stored offline draft first
@@ -28,6 +28,7 @@ export default function Logo({ showSlogan = true, className = "", iconOnly = fal
           const data = snap.data();
           setBranding({
             logoUrl: data.logoUrl || "",
+            faviconUrl: data.faviconUrl || "",
             slogan: data.slogan || ""
           });
         }
@@ -39,6 +40,19 @@ export default function Logo({ showSlogan = true, className = "", iconOnly = fal
 
     return () => unsubscribe();
   }, []);
+
+  // Set high performance real-time custom favicon updates
+  useEffect(() => {
+    if (branding && branding.faviconUrl) {
+      let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement("link");
+        link.rel = "icon";
+        document.getElementsByTagName("head")[0].appendChild(link);
+      }
+      link.href = branding.faviconUrl;
+    }
+  }, [branding]);
 
   const hasManualLogo = branding && branding.logoUrl;
   const sloganText = branding?.slogan !== undefined ? branding.slogan : "Customer Service, We Make It Even Better";

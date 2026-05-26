@@ -37,10 +37,11 @@ service cloud.firestore {
 
     function isValidBranding(data) {
       return data.keys().hasAll(['logoUrl', 'slogan', 'updatedAt'])
-        && data.keys().size() == 3
+        && (data.keys().size() == 3 || (data.keys().size() == 4 && data.keys().hasAll(['faviconUrl'])))
         && data.logoUrl is string && data.logoUrl.size() <= 2000000 // Support base64 or URL
         && data.slogan is string && data.slogan.size() <= 200
-        && data.updatedAt is string && data.updatedAt.size() <= 100;
+        && data.updatedAt is string && data.updatedAt.size() <= 100
+        && (!data.keys().hasAll(['faviconUrl']) || (data.faviconUrl is string && data.faviconUrl.size() <= 2000000));
     }
 
     match /ceo_profile/{profileId} {

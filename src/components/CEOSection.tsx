@@ -34,7 +34,9 @@ export default function CEOSection() {
   // Website Branding Fields
   const [brandingSlogan, setBrandingSlogan] = useState("Customer Service, We Make It Even Better");
   const [brandingLogoUrl, setBrandingLogoUrl] = useState("");
+  const [brandingFaviconUrl, setBrandingFaviconUrl] = useState("");
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
 
   // Hidden admin login modal trigger states
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -47,6 +49,7 @@ export default function CEOSection() {
   // Drag and Drop State flags for outstanding upload responsiveness
   const [isDraggingImage, setIsDraggingImage] = useState(false);
   const [isDraggingLogo, setIsDraggingLogo] = useState(false);
+  const [isDraggingFavicon, setIsDraggingFavicon] = useState(false);
 
   // Sync Auth State & Listen to Firestore Realtime Updates & Local Storage draft states
   useEffect(() => {
@@ -119,6 +122,11 @@ export default function CEOSection() {
     };
     window.addEventListener("dblclick", handleDoubleClicks);
 
+    const handleOpenAdminPortal = () => {
+      setShowLoginModal(true);
+    };
+    window.addEventListener("open_admin_portal", handleOpenAdminPortal);
+
     // 1. Listen for standard auth changes securely
     const unsubscribeAuth = auth.onAuthStateChanged((user) => {
       if (!sessionStorage.getItem("admin_session")) {
@@ -143,6 +151,7 @@ export default function CEOSection() {
         const parsed = JSON.parse(storedBranding);
         setBrandingSlogan(parsed.slogan);
         setBrandingLogoUrl(parsed.logoUrl);
+        setBrandingFaviconUrl(parsed.faviconUrl || "");
       } catch (_) {}
     }
 
@@ -185,6 +194,7 @@ export default function CEOSection() {
           const data = snap.data();
           setBrandingSlogan(data.slogan || "Customer Service, We Make It Even Better");
           setBrandingLogoUrl(data.logoUrl || "");
+          setBrandingFaviconUrl(data.faviconUrl || "");
         }
       },
       (error) => {
@@ -199,6 +209,7 @@ export default function CEOSection() {
       window.removeEventListener("admin_auth_state_changed", handleAuthChange);
       window.removeEventListener("hashchange", checkSecretUrlAuth);
       window.removeEventListener("dblclick", handleDoubleClicks);
+      window.removeEventListener("open_admin_portal", handleOpenAdminPortal);
     };
   }, []);
 
@@ -447,6 +458,76 @@ export default function CEOSection() {
     }
   };
 
+  const processFaviconFile = (file: File) => {
+    const objectUrl = URL.createObjectURL(file);
+    setBrandingFaviconUrl(objectUrl);
+    setUploadingFavicon(true);
+    setStatusMsg(null);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const imgElement = document.createElement("img");
+      imgElement.src = event.target?.result as string;
+      imgElement.onload = () => {
+        const canvas = document.createElement("canvas");
+        const maxDim = 96;
+        let width = imgElement.width;
+        let height = imgElement.height;
+        
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx?.clearRect(0, 0, width, height);
+        ctx?.drawImage(imgElement, 0, 0, width, height);
+        
+        const compressedBase64 = canvas.toDataURL("image/png");
+        setBrandingFaviconUrl(compressedBase64);
+        setUploadingFavicon(false);
+      };
+    };
+    reader.onerror = () => {
+      setStatusMsg({ text: "Failed to read favicon file.", isError: true });
+      setUploadingFavicon(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFaviconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    processFaviconFile(file);
+  };
+
+  const handleFaviconDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingFavicon(true);
+  };
+
+  const handleFaviconDragLeave = () => {
+    setIsDraggingFavicon(false);
+  };
+
+  const handleFaviconDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingFavicon(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith("image/")) {
+      processFaviconFile(file);
+    }
+  };
+
   // Save changes to cloud Firestore database or local mock persistence
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -482,11 +563,15 @@ export default function CEOSection() {
       });
 
       const brandingRef = doc(db, "branding", "main");
-      await setDoc(brandingRef, {
+      const brandingData: any = {
         logoUrl: brandingLogoUrl,
         slogan: brandingSlogan.trim(),
         updatedAt: new Date().toISOString(),
-      });
+      };
+      if (brandingFaviconUrl) {
+        brandingData.faviconUrl = brandingFaviconUrl;
+      }
+      await setDoc(brandingRef, brandingData);
 
       // Clear draft states upon successful cloud db writing
       localStorage.removeItem("ceo_offline_draft");
@@ -524,10 +609,13 @@ export default function CEOSection() {
       setImageSrc(editPortraitUrl);
       localStorage.setItem("ceo_offline_draft", JSON.stringify(offlineDoc));
 
-      const offlineBranding = {
+      const offlineBranding: any = {
         logoUrl: brandingLogoUrl,
         slogan: brandingSlogan.trim(),
       };
+      if (brandingFaviconUrl) {
+        offlineBranding.faviconUrl = brandingFaviconUrl;
+      }
       localStorage.setItem("branding_offline_draft", JSON.stringify(offlineBranding));
       window.dispatchEvent(new Event("branding_offline_draft_changed"));
 
@@ -1162,6 +1250,79 @@ export default function CEOSection() {
                     </div>
                   </div>
                 </div>
+
+                {/* Manual Favicon Upload */}
+                <div className="space-y-2 text-left">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider font-mono block">
+                    Custom Favicon (.ico / .png) (Drag & Drop Active)
+                  </label>
+                  <div 
+                    onDragOver={handleFaviconDragOver}
+                    onDragLeave={handleFaviconDragLeave}
+                    onDrop={handleFaviconDrop}
+                    className={`flex items-center gap-4 bg-gray-50/30 p-4 border rounded-2xl transition-all duration-300 ${
+                      isDraggingFavicon 
+                        ? "border-[#990000] bg-red-50/20 scale-[1.01]" 
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <div 
+                      className="h-16 w-16 rounded-xl overflow-hidden border border-gray-200 shrink-0 flex items-center justify-center p-1 relative shadow-inner"
+                      style={{
+                        backgroundImage: "conic-gradient(#e2e8f0 25%, #ffffff 0 50%, #e2e8f0 0 75%, #ffffff 0)",
+                        backgroundSize: "12px 12px"
+                      }}
+                    >
+                      {brandingFaviconUrl ? (
+                        <img
+                          src={brandingFaviconUrl}
+                          alt="Favicon preview"
+                          className="h-8 w-8 object-contain"
+                        />
+                      ) : (
+                        <span className="text-[8px] text-gray-400 font-bold uppercase text-center font-mono leading-none">Default Link</span>
+                      )}
+                      
+                      {uploadingFavicon && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <span className="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <label 
+                          htmlFor="favicon-file-picker"
+                          className="px-3 py-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-[10px] font-bold text-gray-700 rounded-lg shadow-sm transition-all cursor-pointer active:scale-95 inline-block"
+                        >
+                          Choose Favicon File
+                        </label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFaviconUpload}
+                          className="hidden"
+                          id="favicon-file-picker"
+                        />
+                        
+                        {brandingFaviconUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setBrandingFaviconUrl("")}
+                            className="text-[9px] font-extrabold uppercase text-[#990000] hover:underline cursor-pointer select-none font-mono"
+                          >
+                            Reset Default Favicon
+                          </button>
+                        )}
+                      </div>
+                      
+                      <p className="text-[9px] text-gray-400 leading-normal">
+                        {uploadingFavicon ? "Optimizing design boundaries..." : "Supports transparent png icon structures. Dynamic head configuration enabled with 0ms lag browser response."}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1176,7 +1337,7 @@ export default function CEOSection() {
               
               <button
                 type="submit"
-                disabled={uploadingImage || uploadingLogo}
+                disabled={uploadingImage || uploadingLogo || uploadingFavicon}
                 className="rounded-xl bg-[#990000] disabled:opacity-50 text-white px-5 py-2 text-xs font-bold tracking-wide hover:bg-black transition-all shadow-sm active:scale-95 cursor-pointer"
               >
                 PUBLISH UPDATES

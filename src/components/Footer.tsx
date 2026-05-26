@@ -71,6 +71,17 @@ export default function Footer() {
                   gsunical@gmail.com
                 </a>
               </li>
+              <li className="pt-2 border-t border-gray-200/50">
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.dispatchEvent(new Event("open_admin_portal"));
+                  }}
+                  className="hover:text-[#990000] focus:outline-none transition-colors duration-200 flex items-center gap-1.5 cursor-pointer font-bold select-none text-left"
+                >
+                  🔒 Administrative Login
+                </button>
+              </li>
             </ul>
           </div>
 

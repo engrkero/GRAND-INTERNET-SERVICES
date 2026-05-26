@@ -42,6 +42,10 @@
           "type": "string",
           "description": "URL or base64 data of the manually uploaded custom website logo"
         },
+        "faviconUrl": {
+          "type": "string",
+          "description": "URL or base64 data of the manually uploaded custom website favicon"
+        },
         "slogan": {
           "type": "string",
           "description": "Custom slogan for the website"
