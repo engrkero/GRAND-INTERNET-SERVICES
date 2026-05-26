@@ -60,7 +60,7 @@ export default function FloatingControls() {
     : `234${cleanPhone}`;
 
   const messageText = encodeURIComponent(
-    "Greetings Augustine."
+    "Greetings Grand Internet Service"
   );
   
   const whatsappUrl = `https://wa.me/${waTarget}?text=${messageText}`;

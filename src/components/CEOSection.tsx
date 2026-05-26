@@ -965,14 +965,7 @@ export default function CEOSection() {
                   className="w-full rounded-2xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-xs font-semibold text-black focus:border-[#990000] focus:ring-1 focus:ring-[#990000] outline-none transition-colors"
                 />
               </div>
-
-              {/* Predefined Default Details Note */}
-              <div className="p-3 bg-gray-50 border border-gray-150/60 rounded-2xl text-[10px] leading-relaxed text-gray-500 font-medium font-mono">
-                <span className="text-[#990000] font-bold block mb-1">🔑 DEFAULT LOGIN CREDENTIALS:</span>
-                <div>Email: <strong className="text-black selection:bg-red-200">admin@grandinternet.com</strong></div>
-                <div>Password: <strong className="text-black selection:bg-red-200">grandadmin2026</strong></div>
-              </div>
-
+              
               <div className="pt-2 flex flex-col gap-2">
                 <button
                   type="submit"
