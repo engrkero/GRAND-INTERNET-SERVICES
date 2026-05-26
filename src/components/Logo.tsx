@@ -60,7 +60,7 @@ export default function Logo({ showSlogan = true, className = "", iconOnly = fal
             width="120"
             height="104"
             viewBox="0 0 1000 866"
-            className="h-14 w-auto drop-shadow-sm select-none"
+            className="h-9 sm:h-12 md:h-14 w-auto drop-shadow-sm select-none"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
@@ -123,22 +123,18 @@ export default function Logo({ showSlogan = true, className = "", iconOnly = fal
       </div>
 
       {!iconOnly && (
-        <div className="flex flex-col select-none leading-none gap-0.5">
-          <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-2">
-            <span className="font-sans text-xl sm:text-2xl font-extrabold tracking-wider text-[#990000]">
-              GRAND
-            </span>
-            <div className="flex items-center gap-1.5 leading-none">
-              <span className="font-sans text-base sm:text-lg font-black tracking-widest text-[#111111] uppercase">
-                INTERNET
-              </span>
-              <span className="font-sans text-base sm:text-lg font-black tracking-widest text-[#222222] uppercase">
-                SERVICES
-              </span>
-            </div>
-          </div>
+        <div className="flex flex-col select-none leading-[0.95] gap-0.5 mt-0.5" id="gis-logo-text-col">
+          <span className="font-logo text-xs xs:text-sm sm:text-base md:text-lg font-bold tracking-wider text-[#990000] uppercase">
+            GRAND
+          </span>
+          <span className="font-logo text-[9px] xs:text-[10px] sm:text-xs md:text-sm font-bold tracking-wider uppercase text-[#111111]">
+            INTER<span className="text-[#990000]">NET</span>
+          </span>
+          <span className="font-logo text-[9px] xs:text-[10px] sm:text-xs md:text-sm font-bold tracking-wider text-[#222222] uppercase">
+            SERVICES
+          </span>
           {showSlogan && (
-            <span className="text-[9px] sm:text-[10px] font-mono tracking-wider font-bold text-gray-500">
+            <span className="hidden xs:block text-[7px] sm:text-[8px] font-mono tracking-wider font-bold text-gray-500 mt-1">
               ...{sloganText}
             </span>
           )}

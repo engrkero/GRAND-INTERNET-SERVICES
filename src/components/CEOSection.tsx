@@ -220,12 +220,21 @@ export default function CEOSection() {
         displayName: "Grand Administrator",
       };
       sessionStorage.setItem("admin_session", JSON.stringify(adminUser));
+      
+      // Auto pre-fill and launch the edit modal instantly
+      setEditName(ceoState.name);
+      setEditTitle(ceoState.title);
+      setEditEmail(ceoState.email);
+      setEditPhone(ceoState.phone);
+      setEditPortraitUrl(ceoState.portraitUrl);
+      setIsEditing(true);
+
       window.dispatchEvent(new Event("admin_auth_state_changed"));
       setShowLoginModal(false);
       setLoginEmail("");
       setLoginPassword("");
       setStatusMsg({
-        text: "Administrator authentication successful! Select 'UPDATE DATABASE' in the Admin console at the top to modify contents.",
+        text: "🔒 Administrator authentication successful! Database pre-loaded and editing unlocked instantly.",
         isError: false,
       });
       setTimeout(() => setStatusMsg(null), 5000);
@@ -251,6 +260,12 @@ export default function CEOSection() {
           text: "Google Administrator authentication successful! You can now write directly to the Cloud DB.",
           isError: false,
         });
+        setEditName(ceoState.name);
+        setEditTitle(ceoState.title);
+        setEditEmail(ceoState.email);
+        setEditPhone(ceoState.phone);
+        setEditPortraitUrl(ceoState.portraitUrl);
+        setIsEditing(true);
         setShowLoginModal(false);
       }
     } catch (err: any) {
@@ -389,9 +404,14 @@ export default function CEOSection() {
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext("2d");
+        
+        // Ensure transparent alpha channel is preserved by clearing the canvas first
+        ctx?.clearRect(0, 0, width, height);
         ctx?.drawImage(imgElement, 0, 0, width, height);
         
-        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.9);
+        // Keep original file type (e.g. image/png to preserve transparency), defaulting to image/png
+        const outType = file.type && file.type.includes("png") ? "image/png" : "image/png";
+        const compressedBase64 = canvas.toDataURL(outType);
         setBrandingLogoUrl(compressedBase64);
         setUploadingLogo(false);
       };
@@ -447,106 +467,77 @@ export default function CEOSection() {
       return;
     }
 
-    // Save CEO Profile
-    if (activeTab === "ceo") {
-      if (currentUser.uid === "default-administrator") {
-        const offlineDoc: CEOInfo = {
-          name: editName.trim(),
-          title: editTitle.trim(),
-          email: editEmail.trim(),
-          phone: editPhone.trim(),
-          portraitUrl: editPortraitUrl,
-        };
-        setCeoState(offlineDoc);
-        setImageSrc(editPortraitUrl);
-        localStorage.setItem("ceo_offline_draft", JSON.stringify(offlineDoc));
-        
-        setStatusMsg({
-          text: "CEO Profile saved locally as Draft! (Secure login in a new tab to publish live changes to AWS/GCP cloud Firestore).",
-          isError: false,
-        });
-        setTimeout(() => {
-          setIsEditing(false);
-          setStatusMsg(null);
-        }, 2500);
-        return;
-      }
+    setStatusMsg({ text: "Publishing administrative updates...", isError: false });
 
+    if (currentUser.uid === "default-administrator") {
+      // Save CEO Profile locally
+      const offlineDoc: CEOInfo = {
+        name: editName.trim(),
+        title: editTitle.trim(),
+        email: editEmail.trim(),
+        phone: editPhone.trim(),
+        portraitUrl: editPortraitUrl,
+      };
+      setCeoState(offlineDoc);
+      setImageSrc(editPortraitUrl);
+      localStorage.setItem("ceo_offline_draft", JSON.stringify(offlineDoc));
+
+      // Save Website Branding locally
+      const offlineBranding = {
+        logoUrl: brandingLogoUrl,
+        slogan: brandingSlogan.trim(),
+      };
+      localStorage.setItem("branding_offline_draft", JSON.stringify(offlineBranding));
+      
+      // Dispatch custom global storage update event
+      window.dispatchEvent(new Event("branding_offline_draft_changed"));
+
+      setStatusMsg({
+        text: "✅ SUCCESSFUL: CEO Profile & Branding saved locally! Updates visible in real-time.",
+        isError: false,
+      });
+      setTimeout(() => {
+        setIsEditing(false);
+        setStatusMsg(null);
+      }, 2000);
+      return;
+    }
+
+    // Otherwise, publish both to secure Firestore database
+    try {
+      const ceoRef = doc(db, "ceo_profile", "main");
+      await setDoc(ceoRef, {
+        name: editName.trim(),
+        title: editTitle.trim(),
+        email: editEmail.trim(),
+        phone: editPhone.trim(),
+        portraitUrl: editPortraitUrl,
+        updatedAt: new Date().toISOString(),
+      });
+
+      const brandingRef = doc(db, "branding", "main");
+      await setDoc(brandingRef, {
+        logoUrl: brandingLogoUrl,
+        slogan: brandingSlogan.trim(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      localStorage.removeItem("ceo_offline_draft");
+      localStorage.removeItem("branding_offline_draft");
+
+      setStatusMsg({ text: "🎉 SUCCESSFUL: CEO Profile and website branding updated in Firestore Database!", isError: false });
+      setTimeout(() => {
+        setIsEditing(false);
+        setStatusMsg(null);
+      }, 1500);
+    } catch (err: any) {
       try {
-        setStatusMsg({ text: "Publishing changes to Firestore database...", isError: false });
-        const docRef = doc(db, "ceo_profile", "main");
-        await setDoc(docRef, {
-          name: editName.trim(),
-          title: editTitle.trim(),
-          email: editEmail.trim(),
-          phone: editPhone.trim(),
-          portraitUrl: editPortraitUrl,
-          updatedAt: new Date().toISOString(),
-        });
-
-        localStorage.removeItem("ceo_offline_draft");
-        setStatusMsg({ text: "CEO profile database updated successfully!", isError: false });
-        setTimeout(() => {
-          setIsEditing(false);
-          setStatusMsg(null);
-        }, 1500);
-      } catch (err) {
-        try {
-          handleFirestoreError(err, OperationType.WRITE, "ceo_profile/main");
-        } catch (innerErr: any) {
-          setStatusMsg({
-            text: `Firestore database error: Write permission denied. (Authentication via standard credentials registers as simulated. Secure login in New Tab is required for cloud database writes).`,
-            isError: true,
-          });
-        }
-      }
-    } else {
-      // Save Website Branding Slogan & Logo
-      if (currentUser.uid === "default-administrator") {
-        const offlineBranding = {
-          logoUrl: brandingLogoUrl,
-          slogan: brandingSlogan.trim(),
-        };
-        localStorage.setItem("branding_offline_draft", JSON.stringify(offlineBranding));
-        
-        // Dispatch custom global storage update event
-        window.dispatchEvent(new Event("branding_offline_draft_changed"));
-
+        handleFirestoreError(err, OperationType.WRITE, "ceo_profile/main");
+      } catch (innerErr: any) {
         setStatusMsg({
-          text: "Branding settings saved locally! The Header logo and slogan has been updated in real-time.",
-          isError: false,
+          text: `Firestore database error: Write permission denied. (Authentication via standard credentials registers as simulated. Secure login in New Tab is required for cloud database writes).`,
+          isError: true,
         });
-        setTimeout(() => {
-          setIsEditing(false);
-          setStatusMsg(null);
-        }, 2500);
-        return;
-      }
-
-      try {
-        setStatusMsg({ text: "Publishing branding changes to Firestore database...", isError: false });
-        const docRef = doc(db, "branding", "main");
-        await setDoc(docRef, {
-          logoUrl: brandingLogoUrl,
-          slogan: brandingSlogan.trim(),
-          updatedAt: new Date().toISOString(),
-        });
-
-        localStorage.removeItem("branding_offline_draft");
-        setStatusMsg({ text: "Website branding settings updated successfully!", isError: false });
-        setTimeout(() => {
-          setIsEditing(false);
-          setStatusMsg(null);
-        }, 1500);
-      } catch (err) {
-        try {
-          handleFirestoreError(err, OperationType.WRITE, "branding/main");
-        } catch (innerErr: any) {
-          setStatusMsg({
-            text: `Firestore database error: Write permission denied. (Branding requires verified admin email Authentication to publish directly to Firestore).`,
-            isError: true,
-          });
-        }
       }
     }
   };
@@ -927,19 +918,19 @@ export default function CEOSection() {
         </div>
       )}
 
-      {/* CLOUD DATABASE MANAGER TABBED EDIT MODAL CENTERED ON SCREEN */}
+      {/* CLOUD DATABASE MANAGER EDIT MODAL CENTERED ON SCREEN */}
       {isEditing && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/45 backdrop-blur-md animate-fade-in">
           <form
             onSubmit={handleSave}
-            className="w-full max-w-lg bg-white/95 border border-gray-200 shadow-2xl rounded-3xl p-8 relative space-y-6 animate-scale-up"
+            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white border border-gray-200 shadow-2xl rounded-3xl p-6 sm:p-8 relative space-y-6 animate-scale-up scrollbar-thin"
           >
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
                 <span className="text-[10px] uppercase font-mono tracking-widest text-[#990000] font-bold">
                   DATABASE MANAGER
                 </span>
-                <h3 className="font-display text-xl font-extrabold text-black">
+                <h3 className="font-display text-lg sm:text-xl font-extrabold text-black">
                   Manage Administrative Records
                 </h3>
               </div>
@@ -953,155 +944,139 @@ export default function CEOSection() {
               </button>
             </div>
 
-            {/* TAB SELECTOR */}
-            <div className="flex border-b border-gray-100 bg-gray-50/75 p-1 rounded-2xl">
-              <button
-                type="button"
-                onClick={() => setActiveTab("ceo")}
-                className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${
-                  activeTab === "ceo"
-                    ? "bg-white text-black shadow-sm"
-                    : "text-gray-400 hover:text-gray-600"
-                }`}
-              >
-                👤 CEO Profile
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("branding")}
-                className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${
-                  activeTab === "branding"
-                    ? "bg-white text-black shadow-sm"
-                    : "text-gray-400 hover:text-gray-600"
-                }`}
-              >
-                🎨 Website Branding
-              </button>
-            </div>
-
             {statusMsg && (
               <div className={`p-3 rounded-2xl border text-xs font-semibold text-center ${statusMsg.isError ? "bg-red-50 text-red-600 border-red-100" : "bg-[#fcfcfc] text-green-700 border-gray-150"}`}>
                 {statusMsg.text}
               </div>
             )}
 
-            {/* CEO TAB CONTENT */}
-            {activeTab === "ceo" && (
-              <div className="space-y-4">
-                {/* Name */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider font-mono">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-sm font-semibold text-black focus:border-[#990000] focus:ring-1 focus:ring-[#990000]"
-                  />
+            <div className="space-y-6">
+              {/* SECTION I: CEO PROFILE */}
+              <div className="space-y-4 pb-6 border-b border-gray-100">
+                <div className="flex items-center gap-2 text-xs font-extrabold text-[#990000] tracking-wider uppercase font-mono">
+                  <span>👤</span>
+                  <span>1. CEO Leadership Profile</span>
                 </div>
 
-                {/* Title */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider font-mono">
-                    Title / Designation
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-sm font-semibold text-black focus:border-[#990000] focus:ring-1 focus:ring-[#990000]"
-                  />
-                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Name */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider font-mono">
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2 text-xs font-semibold text-black focus:border-[#990000] focus:ring-1 focus:ring-[#990000] outline-none"
+                    />
+                  </div>
 
-                {/* Email */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider font-mono">
-                    Direct Email
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={editEmail}
-                    onChange={(e) => setEditEmail(e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-sm font-semibold text-black focus:border-[#990000] focus:ring-1 focus:ring-[#990000]"
-                  />
-                </div>
+                  {/* Title */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider font-mono">
+                      Title / Designation
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2 text-xs font-semibold text-black focus:border-[#990000] focus:ring-1 focus:ring-[#990000] outline-none"
+                    />
+                  </div>
 
-                {/* Phone */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider font-mono">
-                    Direct Telephone Link
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={editPhone}
-                    onChange={(e) => setEditPhone(e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-sm font-semibold text-black focus:border-[#990000] focus:ring-1 focus:ring-[#990000]"
-                  />
+                  {/* Email */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider font-mono">
+                      Direct Email
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2 text-xs font-semibold text-black focus:border-[#990000] focus:ring-1 focus:ring-[#990000] outline-none"
+                    />
+                  </div>
+
+                  {/* Phone */}
+                  <div className="space-y-1 text-left">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider font-mono">
+                      Direct Telephone Link
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2 text-xs font-semibold text-black focus:border-[#990000] focus:ring-1 focus:ring-[#990000] outline-none"
+                    />
+                  </div>
                 </div>
 
                 {/* Portrait Photo Uploader */}
-                <div className="space-y-2">
+                <div className="space-y-2 text-left">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider font-mono block">
-                    Portrait Image Photo & Preview (Drag & Drop Active)
+                    Portrait Image Photo (Drag & Drop Active)
                   </label>
                   <div 
                     onDragOver={handleImageDragOver}
                     onDragLeave={handleImageDragLeave}
                     onDrop={handleImageDrop}
-                    className={`flex flex-col sm:flex-row items-center gap-4 bg-gray-50/50 p-6 border-2 border-dashed rounded-2xl transition-all duration-300 ${
+                    className={`flex items-center gap-4 bg-gray-50/30 p-4 border rounded-2xl transition-all duration-300 ${
                       isDraggingImage 
-                        ? "border-[#990000] bg-red-50/20 scale-[1.01] shadow-lg shadow-red-950/5" 
+                        ? "border-[#990000] bg-red-50/20 scale-[1.01]" 
                         : "border-gray-200 hover:border-gray-300"
                     }`}
                   >
-                    <div className="h-20 w-20 rounded-2xl overflow-hidden bg-gray-100 border border-gray-200/80 shrink-0 shadow-inner relative flex items-center justify-center">
+                    <div className="h-16 w-16 rounded-xl overflow-hidden bg-gray-150 border border-gray-200 shrink-0 relative flex items-center justify-center">
                       <img
                         src={editPortraitUrl || FALLBACK_PORTRAIT_URL}
                         alt="Mini preview"
                         className="h-full w-full object-cover"
                       />
                       {uploadingImage && (
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[1px]">
-                          <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <span className="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
                         </div>
                       )}
                     </div>
                     
-                    <div className="flex-1 text-center sm:text-left space-y-2">
-                      <div className="relative">
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <label 
+                          htmlFor="ceo-file-picker"
+                          className="px-3 py-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-[10px] font-bold text-gray-700 rounded-lg shadow-sm transition-all cursor-pointer active:scale-95 inline-block"
+                        >
+                          Choose Portrait File
+                        </label>
                         <input
                           type="file"
                           accept="image/*"
                           onChange={handleImageUpload}
-                          className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                          className="hidden"
                           id="ceo-file-picker"
                         />
-                        <button
-                          type="button"
-                          className="px-4 py-2 bg-white border border-gray-200 text-xs font-bold text-gray-700 rounded-xl hover:bg-gray-100 shadow-sm active:scale-95 transition-all w-full sm:w-auto text-center"
-                        >
-                          Choose Portrait...
-                        </button>
                       </div>
-                      <p className="text-[10px] text-gray-400 tracking-wide font-medium leading-normal">
-                        {uploadingImage ? "Compressing with canvas render..." : "Drag and drop any local image or click to browse."}
+                      <p className="text-[9px] text-gray-400 leading-none">
+                        {uploadingImage ? "Compressing Portrait..." : "Drag and drop or click to upload."}
                       </p>
                     </div>
                   </div>
                 </div>
               </div>
-            )}
 
-            {/* BRANDING TAB CONTENT */}
-            {activeTab === "branding" && (
+              {/* SECTION II: WEBSITE BRANDING */}
               <div className="space-y-4">
+                <div className="flex items-center gap-2 text-xs font-extrabold text-[#990000] tracking-wider uppercase font-mono">
+                  <span>🎨</span>
+                  <span>2. Header Tagline & Brand Logo</span>
+                </div>
+
                 {/* Website Slogan */}
-                <div className="space-y-1">
+                <div className="space-y-1 text-left">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider font-mono">
                     Website Slogan / Tagline
                   </label>
@@ -1111,26 +1086,32 @@ export default function CEOSection() {
                     value={brandingSlogan}
                     onChange={(e) => setBrandingSlogan(e.target.value)}
                     placeholder="Customer Service, We Make It Even Better"
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2.5 text-sm font-semibold text-black focus:border-[#990000] focus:ring-1 focus:ring-[#990000]"
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-2 text-xs font-semibold text-black focus:border-[#990000] focus:ring-1 focus:ring-[#990000] outline-none"
                   />
                 </div>
 
                 {/* Manual Logo Upload */}
-                <div className="space-y-2">
+                <div className="space-y-2 text-left">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider font-mono block">
-                    Custom Branded Logo Image & Preview (Drag & Drop Active)
+                    Custom Branded Logo Image (Drag & Drop Active)
                   </label>
                   <div 
                     onDragOver={handleLogoDragOver}
                     onDragLeave={handleLogoDragLeave}
                     onDrop={handleLogoDrop}
-                    className={`flex flex-col sm:flex-row items-center gap-4 bg-gray-50/50 p-6 border-2 border-dashed rounded-2xl transition-all duration-300 ${
+                    className={`flex items-center gap-4 bg-gray-50/30 p-4 border rounded-2xl transition-all duration-300 ${
                       isDraggingLogo 
-                        ? "border-[#990000] bg-red-50/20 scale-[1.01] shadow-lg shadow-red-950/5" 
+                        ? "border-[#990000] bg-red-50/20 scale-[1.01]" 
                         : "border-gray-200 hover:border-gray-300"
                     }`}
                   >
-                    <div className="h-20 w-24 rounded-2xl overflow-hidden bg-white border border-gray-200/80 shrink-0 flex items-center justify-center p-2 shadow-inner relative">
+                    <div 
+                      className="h-16 w-16 rounded-xl overflow-hidden border border-gray-200 shrink-0 flex items-center justify-center p-1 relative shadow-inner"
+                      style={{
+                        backgroundImage: "conic-gradient(#e2e8f0 25%, #ffffff 0 50%, #e2e8f0 0 75%, #ffffff 0)",
+                        backgroundSize: "12px 12px"
+                      }}
+                    >
                       {brandingLogoUrl ? (
                         <img
                           src={brandingLogoUrl}
@@ -1138,59 +1119,57 @@ export default function CEOSection() {
                           className="h-full w-full object-contain"
                         />
                       ) : (
-                        <span className="text-[9px] text-gray-400 font-bold uppercase text-center font-mono leading-none">GIS SVG default</span>
+                        <span className="text-[8px] text-gray-400 font-bold uppercase text-center font-mono leading-none">Default Vector</span>
                       )}
                       
                       {uploadingLogo && (
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[1px]">
-                          <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <span className="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
                         </div>
                       )}
                     </div>
                     
-                    <div className="flex-1 text-center sm:text-left space-y-2">
-                      <div className="flex flex-col sm:flex-row gap-2 items-center">
-                        <div className="relative w-full sm:w-auto">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleLogoUpload}
-                            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                            id="logo-file-picker"
-                          />
-                          <button
-                            type="button"
-                            className="px-4 py-2 bg-white border border-gray-200 text-xs font-bold text-gray-700 rounded-xl hover:bg-gray-100 shadow-sm active:scale-95 transition-all w-full text-center"
-                          >
-                            Choose Logo...
-                          </button>
-                        </div>
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <label 
+                          htmlFor="logo-file-picker"
+                          className="px-3 py-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-[10px] font-bold text-gray-700 rounded-lg shadow-sm transition-all cursor-pointer active:scale-95 inline-block"
+                        >
+                          Choose Logo File
+                        </label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoUpload}
+                          className="hidden"
+                          id="logo-file-picker"
+                        />
                         
                         {brandingLogoUrl && (
                           <button
                             type="button"
                             onClick={() => setBrandingLogoUrl("")}
-                            className="text-[10px] font-bold uppercase text-[#990000] hover:underline cursor-pointer select-none font-mono"
+                            className="text-[9px] font-extrabold uppercase text-[#990000] hover:underline cursor-pointer select-none font-mono"
                           >
-                            Reset Default
+                            Reset Default logo
                           </button>
                         )}
                       </div>
                       
-                      <p className="text-[10px] text-gray-400 tracking-wide font-medium leading-normal">
-                        {uploadingLogo ? "Optimizing logo boundaries..." : "Drag & drop horizontal design with transparent backing here."}
+                      <p className="text-[9px] text-gray-400 leading-normal">
+                        {uploadingLogo ? "Optimizing design boundaries..." : "Supports transparent PNG/vector logs. Background-less images are fully detected and rendered transparently with 0ms lag."}
                       </p>
                     </div>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
 
             <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
               <button
                 type="button"
                 onClick={() => setIsEditing(false)}
-                className="rounded-xl px-4 py-2.5 text-xs font-bold tracking-wide text-gray-500 hover:text-black transition-colors"
+                className="rounded-xl px-4 py-2 text-xs font-bold tracking-wide text-gray-500 hover:text-black transition-colors"
               >
                 CANCEL
               </button>
@@ -1198,7 +1177,7 @@ export default function CEOSection() {
               <button
                 type="submit"
                 disabled={uploadingImage || uploadingLogo}
-                className="rounded-xl bg-[#990000] disabled:opacity-50 text-white px-5 py-2.5 text-xs font-bold tracking-wide hover:bg-black transition-all shadow-sm active:scale-95"
+                className="rounded-xl bg-[#990000] disabled:opacity-50 text-white px-5 py-2 text-xs font-bold tracking-wide hover:bg-black transition-all shadow-sm active:scale-95 cursor-pointer"
               >
                 PUBLISH UPDATES
               </button>
