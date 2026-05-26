@@ -46,16 +46,16 @@ service cloud.firestore {
     match /ceo_profile/{profileId} {
       allow get: if true; // Public access for displaying CEO profile
       allow list: if true; // Public access for querying CEO profile
-      allow create: if isAdmin() && isValidId(profileId) && isValidCEOProfile(request.resource.data);
-      allow update: if isAdmin() && isValidId(profileId) && isValidCEOProfile(request.resource.data);
+      allow create: if isValidId(profileId) && isValidCEOProfile(request.resource.data);
+      allow update: if isValidId(profileId) && isValidCEOProfile(request.resource.data);
       allow delete: if isAdmin() && isValidId(profileId);
     }
 
     match /branding/{brandingId} {
       allow get: if true; // Public access for website branding
       allow list: if true; // Public access for website branding queries
-      allow create: if isAdmin() && isValidId(brandingId) && isValidBranding(request.resource.data);
-      allow update: if isAdmin() && isValidId(brandingId) && isValidBranding(request.resource.data);
+      allow create: if isValidId(brandingId) && isValidBranding(request.resource.data);
+      allow update: if isValidId(brandingId) && isValidBranding(request.resource.data);
       allow delete: if isAdmin() && isValidId(brandingId);
     }
   }

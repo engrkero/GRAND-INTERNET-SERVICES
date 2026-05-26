@@ -469,41 +469,7 @@ export default function CEOSection() {
 
     setStatusMsg({ text: "Publishing administrative updates...", isError: false });
 
-    if (currentUser.uid === "default-administrator") {
-      // Save CEO Profile locally
-      const offlineDoc: CEOInfo = {
-        name: editName.trim(),
-        title: editTitle.trim(),
-        email: editEmail.trim(),
-        phone: editPhone.trim(),
-        portraitUrl: editPortraitUrl,
-      };
-      setCeoState(offlineDoc);
-      setImageSrc(editPortraitUrl);
-      localStorage.setItem("ceo_offline_draft", JSON.stringify(offlineDoc));
-
-      // Save Website Branding locally
-      const offlineBranding = {
-        logoUrl: brandingLogoUrl,
-        slogan: brandingSlogan.trim(),
-      };
-      localStorage.setItem("branding_offline_draft", JSON.stringify(offlineBranding));
-      
-      // Dispatch custom global storage update event
-      window.dispatchEvent(new Event("branding_offline_draft_changed"));
-
-      setStatusMsg({
-        text: "✅ SUCCESSFUL: CEO Profile & Branding saved locally! Updates visible in real-time.",
-        isError: false,
-      });
-      setTimeout(() => {
-        setIsEditing(false);
-        setStatusMsg(null);
-      }, 2000);
-      return;
-    }
-
-    // Otherwise, publish both to secure Firestore database
+    // Publish updates directly to Firestore Database
     try {
       const ceoRef = doc(db, "ceo_profile", "main");
       await setDoc(ceoRef, {
@@ -522,23 +488,57 @@ export default function CEOSection() {
         updatedAt: new Date().toISOString(),
       });
 
+      // Clear draft states upon successful cloud db writing
       localStorage.removeItem("ceo_offline_draft");
       localStorage.removeItem("branding_offline_draft");
 
-      setStatusMsg({ text: "🎉 SUCCESSFUL: CEO Profile and website branding updated in Firestore Database!", isError: false });
+      setStatusMsg({ text: "🎉 SUCCESSFUL: CEO Profile and website branding updated in Cloud Firestore!", isError: false });
+      
+      // Instantly apply state updates locally for zero-latency feedback
+      const uploadedCEO = {
+        name: editName.trim(),
+        title: editTitle.trim(),
+        email: editEmail.trim(),
+        phone: editPhone.trim(),
+        portraitUrl: editPortraitUrl,
+      };
+      setCeoState(uploadedCEO);
+      setImageSrc(editPortraitUrl);
+
       setTimeout(() => {
         setIsEditing(false);
         setStatusMsg(null);
       }, 1500);
     } catch (err: any) {
-      try {
-        handleFirestoreError(err, OperationType.WRITE, "ceo_profile/main");
-      } catch (innerErr: any) {
-        setStatusMsg({
-          text: `Firestore database error: Write permission denied. (Authentication via standard credentials registers as simulated. Secure login in New Tab is required for cloud database writes).`,
-          isError: true,
-        });
-      }
+      console.warn("Firestore cloud write failed, syncing locally on this browser as draft:", err);
+      
+      // Fallback local save if offline or cloud writing fails
+      const offlineDoc: CEOInfo = {
+        name: editName.trim(),
+        title: editTitle.trim(),
+        email: editEmail.trim(),
+        phone: editPhone.trim(),
+        portraitUrl: editPortraitUrl,
+      };
+      setCeoState(offlineDoc);
+      setImageSrc(editPortraitUrl);
+      localStorage.setItem("ceo_offline_draft", JSON.stringify(offlineDoc));
+
+      const offlineBranding = {
+        logoUrl: brandingLogoUrl,
+        slogan: brandingSlogan.trim(),
+      };
+      localStorage.setItem("branding_offline_draft", JSON.stringify(offlineBranding));
+      window.dispatchEvent(new Event("branding_offline_draft_changed"));
+
+      setStatusMsg({
+        text: "⚠️ Firestore write error, but changes saved locally in this browser! Ensure security rules are fully updated.",
+        isError: true,
+      });
+      setTimeout(() => {
+        setIsEditing(false);
+        setStatusMsg(null);
+      }, 3000);
     }
   };
 
