@@ -4,6 +4,7 @@ import Logo from "./Logo";
 
 export default function Header() {
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const checkAdmin = () => {
@@ -33,7 +34,7 @@ export default function Header() {
         {/* Logo Container */}
         <Logo />
 
-        {/* Navigation Elements */}
+        {/* Desktop Navigation Elements */}
         <nav className="hidden md:flex items-center gap-8">
           <a
             href="#services"
@@ -55,28 +56,80 @@ export default function Header() {
           </a>
         </nav>
 
-        {/* Small Screen Button */}
-        <a
-          href="#services"
-          className="md:hidden rounded-full bg-[#990000] p-2 text-white hover:bg-black transition-all"
-          aria-label="View services"
+        {/* Small Screen Hamburger Button */}
+        <button
+          type="button"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="md:hidden rounded-full bg-[#990000] p-2.5 text-white hover:bg-black transition-all focus:outline-none focus:ring-2 focus:ring-[#990000]/50"
+          aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={isMobileMenuOpen}
+          id="mobile-menu-toggle"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+          {isMobileMenuOpen ? (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          ) : (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="4" y1="12" x2="20" y2="12"></line>
+              <line x1="4" y1="6" x2="20" y2="6"></line>
+              <line x1="4" y1="18" x2="20" y2="18"></line>
+            </svg>
+          )}
+        </button>
+      </div>
+
+      {/* Mobile Dropdown Panel */}
+      <div
+        className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out border-t border-gray-100 bg-white/95 backdrop-blur-md ${
+          isMobileMenuOpen ? "max-h-64 opacity-100 py-4 shadow-xl" : "max-h-0 opacity-0"
+        }`}
+        id="mobile-navigation-dropdown"
+      >
+        <div className="flex flex-col px-6 gap-3">
+          <a
+            href="#services"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="rounded-xl px-4 py-3 text-sm font-bold tracking-wide text-gray-800 hover:bg-gray-50 hover:text-[#990000] transition-colors"
           >
-            <line x1="4" y1="12" x2="20" y2="12"></line>
-            <line x1="4" y1="6" x2="20" y2="6"></line>
-            <line x1="4" y1="18" x2="20" y2="18"></line>
-          </svg>
-        </a>
+            📌 OUR SERVICES
+          </a>
+          <a
+            href="#ceo"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="rounded-xl px-4 py-3 text-sm font-bold tracking-wide text-gray-800 hover:bg-gray-50 hover:text-[#990000] transition-colors"
+          >
+            🏢 LEADERSHIP
+          </a>
+          <a
+            href="#contact"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="mt-1 rounded-xl bg-[#990000] px-4 py-3 text-center text-xs font-black tracking-widest text-white hover:bg-black transition-colors"
+          >
+            GET IN TOUCH
+          </a>
+        </div>
       </div>
     </header>
   );
